@@ -1,0 +1,33 @@
+# Gradle files
+*.iml
+.gradle
+/.gradle
+gradle/wrapper/gradle-wrapper.jar
+/local.properties
+
+# Android Studio specific files
+/.idea/
+
+# Exclude build outputs and artifacts
+/build
+/captures
+.externalNativeBuild
+.cxx
+/outputs
+/*/build
+
+# Log files
+*.log
+
+# Temporary files
+*.swp
+*.swo
+*.tmp
+
+# Generated APK and AAR files
+*.apk
+*.aar
+
+# System files
+.DS_Store
+
