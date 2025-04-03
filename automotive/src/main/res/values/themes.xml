@@ -1,4 +1,4 @@
 <resources>
 
-    <style name="Theme.ChargeStreamer" parent="android:Theme.Material.Light.DarkActionBar" />
+    <style name="Theme.ChargeStreamer" parent="android:Theme.DeviceDefault.DayNight" />
 </resources>
