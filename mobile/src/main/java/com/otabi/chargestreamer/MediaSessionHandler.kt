@@ -115,9 +115,9 @@ class MediaSessionHandler(
         Log.d("MediaControl", "Command to be executed: $command")
 
         command?.let {
-            webView.evaluateJavascript(it, { result ->
+            webView.evaluateJavascript(it) { result ->
                 Log.d("MediaControl", "Play command result: $result")
-            })
+            }
 //            webView.evaluateJavascript(it, null)
         }
     }
