@@ -10,16 +10,25 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
+    private lateinit var mediaSessionHandler: MediaSessionHandler  // Add MediaSessionHandler reference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+
         // Reference the existing WebView from the layout
-        val webView: WebView = findViewById(R.id.webview)
+        webView = findViewById(R.id.webview)
+
+        // Initialize the MediaSessionHandler
+        mediaSessionHandler = MediaSessionHandler(this, webView)
 
         // Configure WebView settings
         val webSettings: WebSettings = webView.settings
@@ -50,10 +59,24 @@ class MainActivity : AppCompatActivity() {
 
         WebView.setWebContentsDebuggingEnabled(true)
         webView.loadUrl("https://www.youtube.com")
+
+        // Optional: Fetch dynamic configurations
+        fetchMediaConfigs()
+    }
+
+    private fun fetchMediaConfigs() {
+        // Fetch dynamic configurations asynchronously
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.CREATED) {
+                // Fetch dynamic configurations asynchronously
+                mediaSessionHandler.fetchDynamicConfig()
+            }
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        webView.destroy()  // Clean up resources
+        mediaSessionHandler.cleanup()  // Ensure MediaSession is released
+        webView.destroy()  // Clean up WebView resources
     }
 }
