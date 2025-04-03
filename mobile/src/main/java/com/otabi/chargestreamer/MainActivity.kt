@@ -1,13 +1,14 @@
 package com.otabi.chargestreamer
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
@@ -15,7 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private lateinit var mediaSessionHandler: MediaSessionHandler  // Add MediaSessionHandler reference
 
@@ -32,6 +33,7 @@ class MainActivity : AppCompatActivity() {
 
         // Configure WebView settings
         val webSettings: WebSettings = webView.settings
+        @SuppressLint("SetJavaScriptEnabled")
         webSettings.javaScriptEnabled = true
         webSettings.domStorageEnabled = true
         webSettings.mediaPlaybackRequiresUserGesture = false
@@ -57,7 +59,7 @@ class MainActivity : AppCompatActivity() {
             // Handle media events or additional browser features if needed
         }
 
-        WebView.setWebContentsDebuggingEnabled(true)
+//        WebView.setWebContentsDebuggingEnabled(true)
         webView.loadUrl("https://www.youtube.com")
 
         // Optional: Fetch dynamic configurations
