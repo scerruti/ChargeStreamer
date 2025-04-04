@@ -11,6 +11,13 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    this.repositories {
+        google()
+        mavenCentral()
+    }
+}
 
 rootProject.name = "Charge Streamer"
 include(":automotive")
