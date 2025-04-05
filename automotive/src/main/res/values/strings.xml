@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Charge Streamer</string>
+    <string name="back">Back</string>
+    <string name="channel_icon_description">Icon for this video channel.</string>
+    <string name="settings_button">A settings gear with a heart to represent setting favorite channels.</string>
+    <string name="channels_button">A display with a heart representing the channels page with favorite video sources.</string>
 </resources>

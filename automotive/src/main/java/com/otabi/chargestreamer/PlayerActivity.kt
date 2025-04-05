@@ -18,7 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
+class PlayerActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private lateinit var mediaSessionHandler: MediaSessionHandler  // Add MediaSessionHandler reference
     private var customViewContainer: FrameLayout? = null
@@ -27,10 +27,10 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_player)
 
         // Reference the existing WebView from the layout
-        webView = findViewById(R.id.webview)
+        webView = findViewById(R.id.webView)
 
         webView.settings.apply {
             loadWithOverviewMode = true
@@ -94,7 +94,7 @@ class MainActivity : ComponentActivity() {
                 customViewCallback = callback
 
                 // Create a FrameLayout to hold the custom view
-                customViewContainer = FrameLayout(this@MainActivity).apply {
+                customViewContainer = FrameLayout(this@PlayerActivity).apply {
                     layoutParams = FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.MATCH_PARENT,
                         FrameLayout.LayoutParams.MATCH_PARENT
@@ -112,12 +112,17 @@ class MainActivity : ComponentActivity() {
                 customViewContainer?.removeAllViews()
                 customViewContainer = null
                 customViewCallback = null
-                setContentView(R.layout.activity_main)
+                setContentView(R.layout.activity_player)
             }
         }
 
 //        WebView.setWebContentsDebuggingEnabled(true)
-        webView.loadUrl("https://www.youtube.com")
+        val url:String? = intent.getStringExtra("url")
+
+        webView.settings.javaScriptEnabled = true
+        if (url != null) {
+            webView.loadUrl(url)
+        }
 
         // Optional: Fetch dynamic configurations
         fetchMediaConfigs()

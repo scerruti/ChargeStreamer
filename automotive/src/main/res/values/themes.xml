@@ -1,4 +1,7 @@
 <resources>
-    <style name="Theme.ChargeStreamer" parent="Theme.Material3.DayNight.NoActionBar" />
+    <style name="Theme.ChargeStreamer" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Set the default background color -->
+        <item name="android:windowBackground">@android:color/background_dark</item>
+    </style>
 </resources>
 
