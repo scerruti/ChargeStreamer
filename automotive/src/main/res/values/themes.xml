@@ -1,4 +1,4 @@
 <resources>
-
-    <style name="Theme.ChargeStreamer" parent="Theme.Material3.DayNight" />
+    <style name="Theme.ChargeStreamer" parent="Theme.Material3.DayNight.NoActionBar" />
 </resources>
+

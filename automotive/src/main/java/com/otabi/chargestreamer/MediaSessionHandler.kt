@@ -68,11 +68,13 @@ class MediaSessionHandler(
 
             override fun onPlay() {
                 Log.d("MediaSessionHandler", "Play button pressed")
+                updatePlaybackState(PlaybackStateCompat.STATE_PLAYING)
                 executeCommand(MediaAction.PLAY)
             }
 
             override fun onPause() {
                 Log.d("MediaSessionHandler", "Pause button pressed")
+                updatePlaybackState(PlaybackStateCompat.STATE_PAUSED)
                 executeCommand(MediaAction.PAUSE)
             }
 
@@ -93,9 +95,28 @@ class MediaSessionHandler(
             }
 
         })
+
         mediaSession.isActive = true
         Log.d("MediaSessionHandler", "MediaSession is active and listening for media keys")
 
+    }
+
+    // The updatePlaybackState helper function
+    private fun updatePlaybackState(state: Int) {
+        val playbackState = PlaybackStateCompat.Builder()
+            .setActions(
+                PlaybackStateCompat.ACTION_PLAY or
+                        PlaybackStateCompat.ACTION_PAUSE or
+                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+                        PlaybackStateCompat.ACTION_FAST_FORWARD or
+                        PlaybackStateCompat.ACTION_REWIND
+            )
+            .setState(state, 0L, 1.0f)
+            .build()
+
+        mediaSession.setPlaybackState(playbackState)
+        Log.d("PlaybackState", "Playback state updated to: $state")
     }
 
     private fun executeCommand(action: MediaAction) {

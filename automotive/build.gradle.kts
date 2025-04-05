@@ -11,19 +11,21 @@ android {
         applicationId = "com.otabi.chargestreamer"
         minSdk = 28
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0-alpha"
+        versionCode = 3
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        versionNameSuffix = "alpha"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
