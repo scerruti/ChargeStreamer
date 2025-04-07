@@ -1,147 +1,174 @@
 package com.otabi.chargestreamer
 
 import android.annotation.SuppressLint
-import android.os.Bundle
+import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.os.Build
+import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.launch
+import androidx.constraintlayout.widget.ConstraintLayout
+import com.otabi.chargestreamer.databinding.ActivityPlayerBinding
 
 class PlayerActivity : ComponentActivity() {
+    private lateinit var binding: ActivityPlayerBinding
     private lateinit var webView: WebView
-    private lateinit var mediaSessionHandler: MediaSessionHandler  // Add MediaSessionHandler reference
-    private var customViewContainer: FrameLayout? = null
+    private lateinit var mediaSessionHandler: MediaSessionHandler
+    private var customViewContainer: ConstraintLayout? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
+    private var originalContentView: View? = null
+    private var isFullscreen = false
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_player)
+        binding = ActivityPlayerBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        @Suppress("DEPRECATION")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, 0, 0)
+        } else {
+            overridePendingTransition(0, 0)
+        }
+        originalContentView = binding.main
 
-        // Reference the existing WebView from the layout
-        webView = findViewById(R.id.webView)
+        binding.channelsButton.setOnClickListener {
+            val intent = Intent(this, ChannelsActivity::class.java)
+            startActivity(intent)
+        }
+        webView = binding.webView
 
         webView.settings.apply {
             loadWithOverviewMode = true
-            useWideViewPort = true // Ensure content scales to fit
-        }
-
-        // Set up WebView with a custom WebChromeClient
-        webView.webChromeClient = object : WebChromeClient() {
-
-        }
-
-        // Initialize the MediaSessionHandler
-        mediaSessionHandler = MediaSessionHandler(this, webView)
-
-        // Configure WebView settings
-        webView.settings.apply {
+            useWideViewPort = true
             javaScriptEnabled = true
             domStorageEnabled = true
-
-            setSupportZoom(true)   // Enable zoom functionality
-            builtInZoomControls = true // Add zoom controls
-            displayZoomControls = false // Hide the native zoom controls UI
+            setSupportZoom(true)
+            builtInZoomControls = true
+            displayZoomControls = false
         }
 
         webView.isVerticalScrollBarEnabled = true
         webView.isHorizontalScrollBarEnabled = true
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val combinedInsets = insets.getInsets(
-                WindowInsetsCompat.Type.statusBars() or
-                        WindowInsetsCompat.Type.navigationBars() or
-                        WindowInsetsCompat.Type.displayCutout() or
-                        WindowInsetsCompat.Type.systemBars() or
-                        WindowInsetsCompat.Type.ime() or
-                        WindowInsetsCompat.Type.captionBar() or
-                        WindowInsetsCompat.Type.systemGestures())
-            Log.d("InsetsDebug", "Insets -> Left: ${combinedInsets.left}, Top: ${combinedInsets.top}, Right: ${combinedInsets.right}, Bottom: ${combinedInsets.bottom}")
-            v.setPadding(
-                combinedInsets.left,
-                combinedInsets.top,
-                maxOf(50, combinedInsets.right),
-                combinedInsets.bottom
-            )
-            insets
-        }
+        webView.webChromeClient = object : WebChromeClient() {}
 
-        // Set the WebViewClient to keep navigation within the WebView
+        mediaSessionHandler = MediaSessionHandler(this, webView)
+
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(
                 view: WebView,
                 request: WebResourceRequest
             ): Boolean {
-                return false // Let WebView handle the URL
+                return false
+            }
+
+            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                view?.setBackgroundColor(Color.BLACK) // Set background color on start.
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                view?.setBackgroundColor(Color.TRANSPARENT) //reset background to be transparent
             }
         }
 
-        // Set the WebChromeClient to manage media playback and other browser-like features
         webView.webChromeClient = object : WebChromeClient() {
-            // Handle media events or additional browser features
+
             override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-                customViewCallback = callback
-
-                // Create a FrameLayout to hold the custom view
-                customViewContainer = FrameLayout(this@PlayerActivity).apply {
-                    layoutParams = FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT
-                    )
-                    setBackgroundColor(Color.BLACK) // Set a black background
-                    addView(view) // Add the video view
+                if (customViewContainer != null) {
+                    onHideCustomView()
+                    return
                 }
+                customViewCallback = callback
+                isFullscreen = true
+                hideSystemBars(true)
 
-                // Replace the activity's content view with the custom view
+                customViewContainer = ConstraintLayout(this@PlayerActivity).apply {
+                    layoutParams = ConstraintLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                    setBackgroundColor(Color.BLACK)
+                    addView(view, 0)
+                    val constraintLayoutParams = ConstraintLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                    constraintLayoutParams.startToStart = ConstraintLayout.LayoutParams.PARENT_ID
+                    constraintLayoutParams.topToTop = ConstraintLayout.LayoutParams.PARENT_ID
+                    constraintLayoutParams.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
+                    constraintLayoutParams.endToStart = binding.rightMarginAreaLayout.id
+                    constraintLayoutParams.marginStart = 20
+
+                    view?.layoutParams = constraintLayoutParams
+                }
                 setContentView(customViewContainer)
             }
 
             override fun onHideCustomView() {
-                // Exit full-screen mode and restore the original layout
+                if (customViewContainer == null) {
+                    return
+                }
+                isFullscreen = false
+                hideSystemBars(false)
                 customViewContainer?.removeAllViews()
+
                 customViewContainer = null
+
+                customViewCallback?.onCustomViewHidden()
                 customViewCallback = null
-                setContentView(R.layout.activity_player)
+                setContentView(originalContentView)
             }
         }
-
-//        WebView.setWebContentsDebuggingEnabled(true)
-        val url:String? = intent.getStringExtra("url")
+        val url: String? = intent.getStringExtra("url")
 
         webView.settings.javaScriptEnabled = true
         if (url != null) {
             webView.loadUrl(url)
         }
-
-        // Optional: Fetch dynamic configurations
-        fetchMediaConfigs()
-    }
-
-    private fun fetchMediaConfigs() {
-        // Fetch dynamic configurations asynchronously
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.CREATED) {
-                // Fetch dynamic configurations asynchronously
-                mediaSessionHandler.fetchDynamicConfig()
-            }
-        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        mediaSessionHandler.cleanup()  // Ensure MediaSession is released
-        webView.destroy()  // Clean up WebView resources
+        mediaSessionHandler.cleanup()
+        webView.destroy()
+    }
+
+    private fun hideSystemBars(fullscreen: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val controller = window.insetsController
+            if (controller != null) {
+                if (fullscreen) {
+                    controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                    controller.systemBarsBehavior =
+                        WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                } else {
+                    controller.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                }
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            if (fullscreen) {
+                originalContentView?.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
+                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION)
+            } else {
+                originalContentView?.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+            }
+        }
     }
 }
-

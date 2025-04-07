@@ -6,7 +6,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-//import com.bumptech.glide.Glide
+import com.bumptech.glide.Glide
 
 class ChannelAdapter(
     private val channels: List<Channel>,
@@ -31,11 +31,25 @@ class ChannelAdapter(
 
         fun bind(channel: Channel, onChannelClicked: (Channel) -> Unit) {
             channelName.text = channel.name
-//            Glide.with(itemView.context)
-//                .load(channel.icon)
-//                .placeholder(R.drawable.placeholder_icon)
-//                .into(channelIcon)
+
+            // Display the preloaded iconBitmap if available
+            channel.iconBitmap?.let {
+                channelIcon.setImageBitmap(it)
+                channelIcon.contentDescription = "Icon for ${channel.name}"
+            } ?: run {
+                // Otherwise, use Glide to fetch and load the icon dynamically
+                Glide.with(itemView.context)
+                    .load(channel.iconUrl) // Using iconUrl directly
+                    .placeholder(R.drawable.missing_icon) // Placeholder while loading
+                    .error(R.drawable.missing_icon) // Fallback for errors
+                    .into(channelIcon)
+
+                channelIcon.contentDescription = "Loading icon for ${channel.name}"
+            }
+
+            // Attach the click listener to the item
             itemView.setOnClickListener { onChannelClicked(channel) }
         }
+
     }
 }

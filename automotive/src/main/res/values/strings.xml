@@ -4,4 +4,8 @@
     <string name="channel_icon_description">Icon for this video channel.</string>
     <string name="settings_button">A settings gear with a heart to represent setting favorite channels.</string>
     <string name="channels_button">A display with a heart representing the channels page with favorite video sources.</string>
+    <string name="channels_title">Channels</string>
+    <string name="channels_list">List of available channels to view</string>
+    <string name="app_icon">application icon</string>
+    <string name="loading_message">Loading channels...</string>
 </resources>

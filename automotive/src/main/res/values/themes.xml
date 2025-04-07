@@ -1,7 +1,18 @@
 <resources>
     <style name="Theme.ChargeStreamer" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Set the default background color -->
-        <item name="android:windowBackground">@android:color/background_dark</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+    <style name="Theme.ChargeStreamer.SplashScreen" parent="@style/Theme.SplashScreen">
+        <!-- Set the splash background color -->
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <!-- Optional: Customize the status bar -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <!-- Prevent overlaps with navigation bar -->
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="postSplashScreenTheme">@style/Theme.ChargeStreamer</item>
     </style>
 </resources>
 

@@ -1,3 +1,10 @@
 package com.otabi.chargestreamer
 
-class Channel(val name: String, val url: String, val icon: String)
+import android.graphics.Bitmap
+
+data class Channel(
+    val name: String,
+    val url: String,
+    val iconUrl: String,
+    var iconBitmap: Bitmap? = null // New property for the fetched icon
+)
