@@ -1,55 +1,60 @@
 package com.otabi.chargestreamer
 
+import android.graphics.Bitmap
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
 
-class ChannelAdapter(
-    private val channels: List<Channel>,
-    private val onChannelClick: (Channel) -> Unit) : RecyclerView.Adapter<ChannelAdapter.ChannelViewHolder>() {
+class ChannelsAdapter(
+    private var channels: List<Channel>,
+    private val icons: MutableMap<String, Bitmap>,
+    private val onChannelClick: (Channel) -> Unit // Click listener
+) : RecyclerView.Adapter<ChannelsAdapter.ChannelViewHolder>() {
+
+    class ChannelViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val nameTextView: TextView = itemView.findViewById(R.id.channelName)
+        val iconImageView: ImageView = itemView.findViewById(R.id.channelIcon)
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ChannelViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.channel, parent, false)
-        return ChannelViewHolder(view)
+        val itemView = LayoutInflater.from(parent.context)
+            .inflate(R.layout.channel, parent, false) // Replace with your item layout
+        return ChannelViewHolder(itemView)
     }
 
     override fun onBindViewHolder(holder: ChannelViewHolder, position: Int) {
         val channel = channels[position]
-        holder.bind(channel, onChannelClick)
-    }
+        holder.nameTextView.text = channel.name
 
-    override fun getItemCount(): Int = channels.size
-
-    class ChannelViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val channelIcon = itemView.findViewById<ImageView>(R.id.channelIcon)
-        private val channelName = itemView.findViewById<TextView>(R.id.channelName)
-
-        fun bind(channel: Channel, onChannelClicked: (Channel) -> Unit) {
-            channelName.text = channel.name
-
-            // Display the preloaded iconBitmap if available
-            channel.iconBitmap?.let {
-                channelIcon.setImageBitmap(it)
-                channelIcon.contentDescription = "Icon for ${channel.name}"
-            } ?: run {
-                // Otherwise, use Glide to fetch and load the icon dynamically
-                Glide.with(itemView.context)
-                    .load(channel.iconUrl) // Using iconUrl directly
-                    .placeholder(R.drawable.missing_icon) // Placeholder while loading
-                    .error(R.drawable.missing_icon) // Fallback for errors
-                    .into(channelIcon)
-
-                channelIcon.contentDescription = "Loading icon for ${channel.name}"
-            }
-
-            // Attach the click listener to the item
-            itemView.setOnClickListener { onChannelClicked(channel) }
+        // Use the dynamically loaded icon if available, otherwise use the default icon
+        val icon = icons[channel.name] ?: channel.iconBitmap // channel.iconBitmap will be the default
+        if (icon != null) {
+            holder.iconImageView.setImageBitmap(icon)
+        } else {
+            // Handle no default or missing icon
+            holder.iconImageView.setImageResource(R.drawable.missing_icon)
         }
 
+        // Set the click listener on the item view
+        holder.itemView.setOnClickListener {
+            onChannelClick(channel) // Call the provided listener
+        }
+    }
+
+    override fun getItemCount() = channels.size
+
+    fun updateIcon(channelName: String, icon: Bitmap) {
+        val channelIndex = getChannelIndex(channelName)
+        if (channelIndex != -1) {
+            icons[channelName] = icon
+            notifyItemChanged(channelIndex)
+        }
+    }
+
+    fun getChannelIndex(channelName: String): Int {
+        return channels.indexOfFirst { it.name == channelName }
     }
 }

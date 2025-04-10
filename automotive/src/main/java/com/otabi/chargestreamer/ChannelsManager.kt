@@ -1,17 +1,21 @@
 package com.otabi.chargestreamer
 
 import android.content.res.AssetManager
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.runBlocking
+import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Properties
+import java.util.concurrent.ConcurrentHashMap
 
 class ChannelsManager(cacheDir: File, assetManager: AssetManager) {
-
     private val fileName = "channels.properties"
     private val propertiesFile = File(cacheDir, "assets$fileName")
     private val iconHandler = IconHandler(cacheDir)
+    private val channelsManagerScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val iconListeners: MutableMap<String, IconLoadedListener> = ConcurrentHashMap()
 
     companion object {
         var isFileInitialized = false
@@ -19,25 +23,35 @@ class ChannelsManager(cacheDir: File, assetManager: AssetManager) {
 
     init {
         // Only copy the file once
-        if (!isFileInitialized) {
-            if (!propertiesFile.exists()) {
-                assetManager.open(fileName).use { inputStream ->
-                    propertiesFile.outputStream().use { outputStream ->
-                        inputStream.copyTo(outputStream)
-                    }
+        if (!isFileInitialized && !propertiesFile.exists()) {
+            // Copy asset to properties file
+            assetManager.open(fileName).use { inputStream ->
+                propertiesFile.outputStream().use { outputStream ->
+                    inputStream.copyTo(outputStream)
                 }
             }
+
+            // Load properties from the file
+            val properties = Properties().apply {
+                propertiesFile.inputStream().use { load(it) }
+            }
+
+            // Copy icon assets to cache
+            iconHandler.copyIconAssets(cacheDir, assetManager, properties)
+
+            // Mark file initialization as complete
             isFileInitialized = true
         }
     }
 
     // Load channels into a LinkedHashMap to preserve order
-    fun loadChannels(): LinkedHashMap<String, Channel> {
+    fun loadChannels(iconLoadedListener: IconLoadedListener? = null): LinkedHashMap<String, Channel> {
         val channelsMap: LinkedHashMap<String, Channel>
 
         if (propertiesFile.exists()) {
-            val properties = Properties()
-            properties.load(propertiesFile.inputStream())
+            val properties = Properties().apply {
+                propertiesFile.inputStream().use { load(it) }
+            }
 
             // Parse the properties and maintain numerical order
             val channelsList = mutableListOf<Pair<Int, Channel>>()
@@ -61,15 +75,26 @@ class ChannelsManager(cacheDir: File, assetManager: AssetManager) {
                 .associateTo(LinkedHashMap()) { it.second.name to it.second }
 
             // Parallelize icon fetching
-            runBlocking {
-                val iconJobs = channelsMap.map { (name, channel) ->
-                    async {
-                        iconHandler.getIcon(name, channel.url)
-                    }
+            channelsMap.forEach { (name, channel) ->
+                iconLoadedListener?.let {
+                    iconListeners[name] = it
                 }
-
-                iconJobs.awaitAll().forEachIndexed { index, icon ->
-                    channelsMap.values.elementAt(index).iconBitmap = icon
+                channelsManagerScope.launch {
+                    try {
+                        val icon = iconHandler.getIcon(name, channel.url)
+                        if (icon != null) {
+                            channel.iconBitmap = icon
+                            iconListeners[name]?.onIconLoaded(name, icon)
+                        } else {
+                            iconListeners[name]?.onIconFailed(name)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(
+                            "com.otabi.chargestreamer.ChannelsManager",
+                            "Failed to fetch icon for $name",
+                            e
+                        )
+                    }
                 }
             }
         } else {

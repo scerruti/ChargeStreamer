@@ -1,5 +1,6 @@
 package com.otabi.chargestreamer
 
+import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
@@ -11,21 +12,35 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import java.io.FileOutputStream
+import java.io.IOException
+import java.util.Properties
 
 
 class IconHandler(private val cacheDir: File) {
+	@Suppress("PrivatePropertyName")
+	private val TAG = this::class.java.simpleName
+
     // Main function: Fetch and cache the icon dynamically
     suspend fun getIcon(channelName: String, siteUrl: String): Bitmap? {
         // Check cache first
         val cachedIcon = getCachedIcon(channelName)
         if (cachedIcon != null) return cachedIcon
 
+        // Check if it is available from the APK
+
+
         // Dynamically fetch the icon URL
         val iconUrl = fetchIconUrl(URL(siteUrl).let { "${it.protocol}://${it.host}${it.path}" })
             ?: return null
 
         // Fetch and cache the icon
-        return fetchAndCacheIcon(channelName, iconUrl)
+        val bitmap: Bitmap?
+        withContext(Dispatchers.IO) {
+            bitmap = fetchAndCacheIcon(channelName, iconUrl)
+        }
+
+        return bitmap
     }
 
     // Fetch the best icon URL dynamically
@@ -38,7 +53,8 @@ class IconHandler(private val cacheDir: File) {
             val head = document.head()
 
             // Step 1: Check for apple-touch-icon
-            head.select("link[rel=apple-touch-icon], link[rel=apple-touch-icon-precomposed]").first()?.let {
+            head.select("link[rel=apple-touch-icon], link[rel=apple-touch-icon-precomposed]")
+                .first()?.let {
                 return buildAbsoluteUrl(siteUrl, it.attr("href"))
             }
 
@@ -55,16 +71,21 @@ class IconHandler(private val cacheDir: File) {
             // Step 3: Check manifest.json for high-res icons
             val manifestUrl = buildAbsoluteUrl(siteUrl, "/manifest.json")
             val manifestContent = downloadManifest(manifestUrl)
-            manifestContent?.let {
-                val gson = com.google.gson.Gson()
-                val manifest = gson.fromJson(it, Manifest::class.java)
-                manifest.icons?.filter { icon -> icon.sizes != null }
-                    ?.maxByOrNull { icon ->
-                        val sizes = icon.sizes!!.split("x").mapNotNull { size -> size.toIntOrNull() }
-                        if (sizes.size == 2) sizes[0] * sizes[1] else 0 // Calculate pixel area
-                    }?.let { largestIcon ->
-                        return buildAbsoluteUrl(siteUrl, largestIcon.src)
-                    }
+
+            try {
+                manifestContent?.let {
+                    val gson = com.google.gson.Gson()
+                    val manifest = gson.fromJson(it, Manifest::class.java)
+                    manifest.icons?.filter { icon -> icon.sizes != null }
+                        ?.maxByOrNull { icon ->
+                            val sizes = icon.sizes!!.split("x").mapNotNull { size -> size.toIntOrNull() }
+                            if (sizes.size == 2) sizes[0] * sizes[1] else 0 // Calculate pixel area
+                        }?.let { largestIcon ->
+                            return buildAbsoluteUrl(siteUrl, largestIcon.src)
+                        }
+                }
+            } catch (e: Exception) {
+                Log.d(TAG, "Unexpected response: Content returned from $manifestUrl is not valid JSON: $e")
             }
 
             // Step 4: Fallback to favicon.ico
@@ -85,23 +106,23 @@ class IconHandler(private val cacheDir: File) {
         }
     }
 
-    // Fetch the icon and cache it
-    private suspend fun fetchAndCacheIcon(channelName: String, iconUrl: String): Bitmap? {
-        return withContext(Dispatchers.IO) {
-            try {
-                val url = URL(iconUrl)
-                val bitmap = BitmapFactory.decodeStream(url.openConnection().getInputStream())
-                cacheIcon(channelName, bitmap)
-                bitmap
-            } catch (e: Exception) {
-                Log.e(
-                    "com.otabi.chargestreamer.IconHandler",
-                    "Failed to fetch and cache icon: $iconUrl",
-                    e
-                )
-                null
+    // Fetch the icon
+    private suspend fun fetchBitmapFromUrl(iconUrl: String): Bitmap? = withContext(Dispatchers.IO) {
+        try {
+            URL(iconUrl).openConnection().getInputStream().use { inputStream ->
+                BitmapFactory.decodeStream(inputStream)
             }
+        } catch (e: Exception) {
+            Log.e("IconHandler", "Error fetching bitmap from URL: $iconUrl", e)
+            null
         }
+    }
+
+    // cache the fetched icon
+    private suspend fun fetchAndCacheIcon(channelName: String, iconUrl: String): Bitmap? {
+        val bitmap = fetchBitmapFromUrl(iconUrl)
+        bitmap?.let { cacheIcon(channelName, it) }
+        return bitmap
     }
 
     // Save the icon to cache
@@ -164,6 +185,34 @@ class IconHandler(private val cacheDir: File) {
             URL(URL(baseUrl), relativeUrl).toString() // Combine base URL and relative path
         }
     }
+
+    fun copyIconAssets(cacheDir: File, assetManager: AssetManager, properties: Properties) {
+
+        for ((key, _) in properties) {
+            // Extract numerical prefix and clean the name
+            val name = (key as String).replace(Regex("^\\d+_"), "").substringAfter("_", key)
+                .replace("_", " ")
+            copyAssetToCache (cacheDir, assetManager, "${name}_icon.png")
+        }
+    }
+
+    private fun copyAssetToCache(cacheDir: File, assetManager: AssetManager, name: String) {
+        val cacheFile = File(cacheDir, "${name}_icon.png")
+        if (!cacheFile.exists()) {
+            try {
+                assetManager.open("${name}_icon.png").use { inputStream ->
+                    FileOutputStream(cacheFile).use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+            } catch (e: IOException) {
+                // Handle the exception appropriately, e.g., log it or display an error message
+                e.printStackTrace()
+                // consider displaying an error message to the user or logging the issue.
+            }
+        }
+    }
+
 }
 
 data class Manifest(

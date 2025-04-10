@@ -1,62 +1,92 @@
 package com.otabi.chargestreamer
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Rect
 import android.os.Bundle
+import android.os.StrictMode
+import android.util.Log
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.core.splashscreen.SplashScreen;
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.google.android.datatransport.BuildConfig
+import com.otabi.chargestreamer.databinding.ActivityChannelsBinding
+
+class ChannelsActivity : AppCompatActivity(), IconLoadedListener {
+	@Suppress("PrivatePropertyName")
+	private val TAG = this::class.java.simpleName
 
 
-class ChannelsActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityChannelsBinding
     private lateinit var channelsManager: ChannelsManager
+    private lateinit var channelsAdapter: ChannelsAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val splashScreen: SplashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+        binding = ActivityChannelsBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        splashScreen.setKeepOnScreenCondition { true }
-
-        // Initialize ChannelsManager
-        channelsManager = ChannelsManager(applicationContext.cacheDir, assets)
-
-        // Start the loading process
-        lifecycleScope.launch {
-            val channelsMap = loadChannelsAndIcons()
+        if (BuildConfig.DEBUG) {
+            // Look for unclosed resources
+            StrictMode.setVmPolicy(
+                StrictMode.VmPolicy.Builder()
+                    .detectLeakedClosableObjects()
+                    .penaltyLog() // Logs the issue
+                    .penaltyDeath() // Crashes the app to highlight the issue (optional)
+                    .build()
+            )
         }
 
-        splashScreen.setKeepOnScreenCondition { false }
+        // Use GridLayoutManager for 6 columns
+        binding.channelsRecyclerView.layoutManager = GridLayoutManager(this, 6)
 
-        setContentView(R.layout.activity_channels)
+        // Add ItemDecoration for consistent spacing
+        binding.channelsRecyclerView.addItemDecoration(SpacingItemDecoration(16))
 
         // Initialize ChannelsManager
+        channelsManager = ChannelsManager(cacheDir, assets)
 
-        // Load channels from the manager
-        val channels = channelsManager.loadChannels().values.toList()
+        // Load channels and provide the listener
+        val channels = channelsManager.loadChannels(this)
 
-        val recyclerView = findViewById<RecyclerView>(R.id.channelsRecyclerView)
-        recyclerView.adapter = ChannelAdapter(channels) { channel ->
-            val intent = Intent(this, PlayerActivity::class.java)
-            intent.putExtra("url", channel.url)
-            startActivity(intent)
+        // Initialize the adapter with the channels, an empty icon map, and the click listener
+        channelsAdapter = ChannelsAdapter(channels.values.toList(), mutableMapOf()) { channel ->
+            // Handle channel click here
+            onChannelClicked(channel)
+        }
+        binding.channelsRecyclerView.adapter = channelsAdapter
+    }
+
+    override fun onIconLoaded(channelName: String, icon: Bitmap) {
+        runOnUiThread {
+            // Update the channel's icon in the adapter
+            channelsAdapter.updateIcon(channelName, icon)
+            Log.d(TAG, "Icon loaded for $channelName")
+
         }
     }
 
-    private suspend fun loadChannelsAndIcons(): LinkedHashMap<String, Channel> {
-        return withContext(Dispatchers.IO) {
-            channelsManager.loadChannels()
+    override fun onIconFailed(channelName: String) {
+        runOnUiThread {
+            // Optionally, handle the failure (e.g., display a default icon)
+            channelsAdapter.notifyItemChanged(channelsAdapter.getChannelIndex(channelName))
+            Log.w(TAG, "Failed to load icon for $channelName")
+
         }
     }
 
-    private fun moveToPlayerActivity(channelsMap: LinkedHashMap<String, Channel>) {
-        // Pass channelsMap to the MainActivity via Intent or other mechanisms
-        val intent = Intent(this, ChannelsActivity::class.java)
+    private fun onChannelClicked(channel: Channel) {
+        val intent = Intent(this, PlayerActivity::class.java)
+        intent.putExtra("CHANNEL_NAME", channel.name)
+        intent.putExtra("CHANNEL_URL", channel.url)
         startActivity(intent)
-        finish()
     }
+}
 
+class SpacingItemDecoration(private val spacing: Int) : RecyclerView.ItemDecoration() {
+
+    override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
+        outRect.set(spacing, spacing, spacing, spacing)
+    }
 }

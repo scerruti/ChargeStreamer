@@ -41,7 +41,8 @@
 ////        mMediaNotificationManager = MediaNotificationManager(this)
 //
 ////        mPlayback = MediaPlayerAdapter(this, MediaPlayerListener())
-//        Log.d(TAG, "onCreate: VideoService creating MediaSession, and MediaNotificationManager")
+//        Log.d(TAG, "onCreate: VideoService creating MediaSession, and MediaNotificationManager"))
+
 //    }
 //
 //    override fun onTaskRemoved(rootIntent: Intent?) {
@@ -54,7 +55,8 @@
 //        mMediaNotificationManager.onDestroy()
 ////        mPlayback.stop()
 //        mSession!!.release()
-//        Log.d(TAG, "onDestroy: MediaPlayerAdapter stopped, and MediaSession released")
+//        Log.d(TAG, "onDestroy: MediaPlayerAdapter stopped, and MediaSession released"))
+
 //    }
 //
 //    override fun onGetRoot(
@@ -126,7 +128,8 @@
 //            }
 //
 ////            mPlayback.playFromMedia(mPreparedMedia)
-//            Log.d(TAG, "onPlayFromMediaId: MediaSession active")
+//            Log.d(TAG, "onPlayFromMediaId: MediaSession active"))
+
 //        }
 //
 //        override fun onPause() {

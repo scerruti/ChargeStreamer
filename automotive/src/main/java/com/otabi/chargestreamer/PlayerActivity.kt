@@ -6,7 +6,6 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -20,6 +19,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import com.otabi.chargestreamer.databinding.ActivityPlayerBinding
 
 class PlayerActivity : ComponentActivity() {
+
     private lateinit var binding: ActivityPlayerBinding
     private lateinit var webView: WebView
     private lateinit var mediaSessionHandler: MediaSessionHandler
@@ -131,7 +131,7 @@ class PlayerActivity : ComponentActivity() {
                 setContentView(originalContentView)
             }
         }
-        val url: String? = intent.getStringExtra("url")
+        val url: String? = intent.getStringExtra("CHANNEL_URL")
 
         webView.settings.javaScriptEnabled = true
         if (url != null) {

@@ -12,10 +12,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.URI
 
-class MediaSessionHandler(
-    context: Context,
-    private val webView: WebView
-) {
+class MediaSessionHandler(context: Context, private val webView: WebView) {
+    @Suppress("PrivatePropertyName")
+	private val TAG = this::class.java.simpleName
+
     private val mediaSession: MediaSessionCompat = MediaSessionCompat(context, "MediaSessionHandler")
 
     // Hardcoded fallback configurations
@@ -53,7 +53,8 @@ class MediaSessionHandler(
 
         mediaSession.setCallback(object : MediaSessionCompat.Callback() {
             override fun onMediaButtonEvent(mediaButtonIntent: Intent?): Boolean {
-                Log.d("MediaSessionHandler", "Media button event received.")
+                Log.d(TAG, "Media button event received.")
+
                 val keyEvent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     mediaButtonIntent?.getParcelableExtra(Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
                 } else {
@@ -61,19 +62,22 @@ class MediaSessionHandler(
                     mediaButtonIntent?.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
                 }
                 if (keyEvent != null) {
-                    Log.d("MediaSessionHandler", "KeyEvent detected: ${keyEvent.keyCode}")
+                    Log.d(TAG, "KeyEvent detected: ${keyEvent.keyCode}")
+
                 }
                 return super.onMediaButtonEvent(mediaButtonIntent)
             }
 
             override fun onPlay() {
-                Log.d("MediaSessionHandler", "Play button pressed")
+                Log.d(TAG, "Play button pressed")
+
                 updatePlaybackState(PlaybackStateCompat.STATE_PLAYING)
                 executeCommand(MediaAction.PLAY)
             }
 
             override fun onPause() {
-                Log.d("MediaSessionHandler", "Pause button pressed")
+                Log.d(TAG, "Pause button pressed")
+
                 updatePlaybackState(PlaybackStateCompat.STATE_PAUSED)
                 executeCommand(MediaAction.PAUSE)
             }
@@ -97,7 +101,8 @@ class MediaSessionHandler(
         })
 
         mediaSession.isActive = true
-        Log.d("MediaSessionHandler", "MediaSession is active and listening for media keys")
+        Log.d(TAG, "MediaSession is active and listening for media keys")
+
 
     }
 
@@ -116,11 +121,13 @@ class MediaSessionHandler(
             .build()
 
         mediaSession.setPlaybackState(playbackState)
-        Log.d("PlaybackState", "Playback state updated to: $state")
+        Log.d(TAG, "Playback state updated to: $state")
+
     }
 
     private fun executeCommand(action: MediaAction) {
-        Log.d("MediaControl", "MediaAction: ${action.name}")
+        Log.d(TAG, "MediaAction: ${action.name}")
+
 
         val currentUrl = webView.url ?: return
         val config = getMediaConfigForUrl(currentUrl)
@@ -133,11 +140,13 @@ class MediaSessionHandler(
             MediaAction.REVERSE -> config.reverseCommand
         }
 
-        Log.d("MediaControl", "Command to be executed: $command")
+        Log.d(TAG, "Command to be executed: $command")
+
 
         command?.let {
             webView.evaluateJavascript(it) { result ->
-                Log.d("MediaControl", "Play command result: $result")
+                Log.d(TAG, "Play command result: $result")
+
             }
 //            webView.evaluateJavascript(it, null)
         }
@@ -149,6 +158,7 @@ class MediaSessionHandler(
         return cachedConfig[serverUrl] ?: hardcodedConfig[serverUrl] ?: MediaControlConfig()
     }
 
+    @Suppress("UNUSED")
     suspend fun fetchDynamicConfig() {
         // Simulate a web call to fetch dynamic configurations (e.g., from an API)
         val dynamicConfig = withContext(Dispatchers.IO) {
