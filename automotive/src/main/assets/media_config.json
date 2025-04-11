@@ -1,0 +1,26 @@
+{
+  "m.youtube.com": {
+    "playCommand": "document.querySelector('video').play()",
+    "pauseCommand": "document.querySelector('video').pause()",
+    "nextVideoCommand": "document.querySelector('button[aria-label=\"Next video\"]')?.click()",
+    "prevVideoCommand": "document.querySelector('button[aria-label=\"Previous video\"]')?.click()",
+    "forwardCommand": "document.querySelector('button[aria-label=\"Fast forward 10 seconds\"]')?.click()",
+    "reverseCommand": "document.querySelector('button[aria-label=\"Rewind 10 seconds\"]')?.click()"
+  },
+  "vimeo.com": {
+    "playCommand": "document.querySelector('video').play()",
+    "pauseCommand": "document.querySelector('video').pause()",
+    "nextVideoCommand": null,
+    "prevVideoCommand": null,
+    "forwardCommand": "document.querySelector('video').currentTime += 10",
+    "reverseCommand": "document.querySelector('video').currentTime -= 10"
+  },
+  "example.com": {
+    "playCommand": "document.querySelector('.play-button')?.click()",
+    "pauseCommand": "document.querySelector('.pause-button')?.click()",
+    "nextVideoCommand": null,
+    "prevVideoCommand": null,
+    "forwardCommand": null,
+    "reverseCommand": null
+  }
+}

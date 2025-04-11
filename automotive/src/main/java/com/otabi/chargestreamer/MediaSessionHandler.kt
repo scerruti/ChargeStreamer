@@ -8,31 +8,19 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.view.KeyEvent
 import android.webkit.WebView
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.net.URI
 
 class MediaSessionHandler(context: Context, private val webView: WebView) {
-    @Suppress("PrivatePropertyName")
-	private val TAG = this::class.java.simpleName
+    companion object {
+        private val TAG: String = MediaSessionHandler::class.java.simpleName
+    }
 
     private val mediaSession: MediaSessionCompat = MediaSessionCompat(context, "MediaSessionHandler")
-
-    // Hardcoded fallback configurations
-    private val hardcodedConfig = mapOf(
-        "m.youtube.com" to MediaControlConfig(
-            playCommand = "document.querySelector('video').play()",
-            pauseCommand = "document.querySelector('video').pause()",
-            nextVideoCommand = "document.querySelector('button[aria-label=\"Next video\"]')?.click()",
-            prevVideoCommand = "document.querySelector('button[aria-label=\"Previous video\"]')?.click()",
-            forwardCommand = "document.querySelector('button[aria-label=\"Fast forward 10 seconds\"]')?.click()",
-            reverseCommand = "document.querySelector('button[aria-label=\"Rewind 10 seconds\"]')?.click()",
-        )
-    )
-
-    private var cachedConfig: Map<String, MediaControlConfig> = emptyMap()
+    private var cachedConfig: Map<String, MediaControlConfig> = emptyMap() // Config loaded from JSON
 
     init {
+        // Initialize playback state
         val playbackState = PlaybackStateCompat.Builder()
             .setActions(
                 PlaybackStateCompat.ACTION_PLAY or
@@ -50,7 +38,6 @@ class MediaSessionHandler(context: Context, private val webView: WebView) {
             .build()
 
         mediaSession.setPlaybackState(playbackState)
-
         mediaSession.setCallback(object : MediaSessionCompat.Callback() {
             override fun onMediaButtonEvent(mediaButtonIntent: Intent?): Boolean {
                 Log.d(TAG, "Media button event received.")
@@ -63,7 +50,6 @@ class MediaSessionHandler(context: Context, private val webView: WebView) {
                 }
                 if (keyEvent != null) {
                     Log.d(TAG, "KeyEvent detected: ${keyEvent.keyCode}")
-
                 }
                 return super.onMediaButtonEvent(mediaButtonIntent)
             }
@@ -97,16 +83,15 @@ class MediaSessionHandler(context: Context, private val webView: WebView) {
             override fun onRewind() {
                 executeCommand(MediaAction.REVERSE)
             }
-
         })
 
         mediaSession.isActive = true
         Log.d(TAG, "MediaSession is active and listening for media keys")
 
-
+        // Load configurations from the JSON file
+        loadMediaConfig(context)
     }
 
-    // The updatePlaybackState helper function
     private fun updatePlaybackState(state: Int) {
         val playbackState = PlaybackStateCompat.Builder()
             .setActions(
@@ -122,12 +107,10 @@ class MediaSessionHandler(context: Context, private val webView: WebView) {
 
         mediaSession.setPlaybackState(playbackState)
         Log.d(TAG, "Playback state updated to: $state")
-
     }
 
     private fun executeCommand(action: MediaAction) {
         Log.d(TAG, "MediaAction: ${action.name}")
-
 
         val currentUrl = webView.url ?: return
         val config = getMediaConfigForUrl(currentUrl)
@@ -142,38 +125,41 @@ class MediaSessionHandler(context: Context, private val webView: WebView) {
 
         Log.d(TAG, "Command to be executed: $command")
 
-
         command?.let {
             webView.evaluateJavascript(it) { result ->
-                Log.d(TAG, "Play command result: $result")
-
+                Log.d(TAG, "Command execution result: $result")
             }
-//            webView.evaluateJavascript(it, null)
         }
     }
 
     private fun getMediaConfigForUrl(url: String): MediaControlConfig {
-
-        val serverUrl = URI(url).host
-        return cachedConfig[serverUrl] ?: hardcodedConfig[serverUrl] ?: MediaControlConfig()
+        val serverUrl = URI(url).host ?: return MediaControlConfig()
+        return cachedConfig[serverUrl] ?: MediaControlConfig()
     }
 
-    @Suppress("UNUSED")
-    suspend fun fetchDynamicConfig() {
-        // Simulate a web call to fetch dynamic configurations (e.g., from an API)
-        val dynamicConfig = withContext(Dispatchers.IO) {
-            // Replace with your actual web call logic
-            mapOf(
-                "vimeo.com" to MediaControlConfig(
-                    playCommand = "document.querySelector('video').play()",
-                    pauseCommand = "document.querySelector('video').pause()",
-                    forwardCommand = "document.querySelector('video').currentTime += 10",
-                    reverseCommand = "document.querySelector('video').currentTime -= 10"
-                )
-            )
-        }
+    private fun loadMediaConfig(context: Context) {
+        try {
+            val inputStream = context.assets.open("media_config.json")
+            val jsonString = inputStream.bufferedReader().use { it.readText() }
+            val jsonObject = JSONObject(jsonString)
 
-        cachedConfig = dynamicConfig
+            val configMap = mutableMapOf<String, MediaControlConfig>()
+            jsonObject.keys().forEach { key ->
+                val siteConfig = jsonObject.getJSONObject(key)
+                configMap[key] = MediaControlConfig(
+                    playCommand = siteConfig.optString("playCommand"),
+                    pauseCommand = siteConfig.optString("pauseCommand"),
+                    nextVideoCommand = siteConfig.optString("nextVideoCommand"),
+                    prevVideoCommand = siteConfig.optString("prevVideoCommand"),
+                    forwardCommand = siteConfig.optString("forwardCommand"),
+                    reverseCommand = siteConfig.optString("reverseCommand")
+                )
+            }
+            cachedConfig = configMap
+            Log.d(TAG, "Media configurations loaded: $cachedConfig")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load media configurations", e)
+        }
     }
 
     fun cleanup() {
